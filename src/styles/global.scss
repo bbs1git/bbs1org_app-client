@@ -1,0 +1,378 @@
+@import '../uni.scss';
+
+/**
+ * 全局样式。只在 App.vue 里引入一次 —— 这里的 CSS 自定义属性会重复输出，
+ * 被 uni.scss 注入到每个组件的话体积会爆。
+ *
+ * 主题三种状态：
+ *   1. 跟随系统（大多数用户，只有 prefers-color-scheme 能分辨）
+ *   2. 手动浅色（.theme-light）
+ *   3. 手动深色（.theme-dark）
+ * 手动类是加在页面外壳上的，不是加在 page 上 —— 小程序里拿不到 page 元素，
+ * 外壳铺满并自带底色，视觉上和改 page 无差别。
+ */
+
+// 令牌挂载点。page 在三端都指页面根（H5 编译期会换成 uni-page-body），是最稳的一个。
+// 小程序那边绝不能把 :root、body 混进同一个选择器列表 —— WXSS 遇到不认识的简单选择器
+// 有可能整条规则作废，整套浅色令牌会一起消失，页面直接变成没上色的样子。
+page {
+  @include light-tokens;
+  color-scheme: light;
+}
+
+// #ifdef H5
+// H5 额外给 :root 一份，否则 html/body 拿不到 --bg，回弹的时候会露出宿主底色。
+:root {
+  @include light-tokens;
+  color-scheme: light;
+}
+
+body {
+  background: var(--bg);
+}
+// #endif
+
+@media (prefers-color-scheme: dark) {
+  page {
+    @include dark-tokens;
+    color-scheme: dark;
+  }
+
+  // #ifdef H5
+  :root {
+    @include dark-tokens;
+    color-scheme: dark;
+  }
+  // #endif
+}
+
+// 手动深色：不管系统是什么，这个类说了算。
+.theme-dark {
+  @include dark-tokens;
+  color-scheme: dark;
+}
+
+// 手动浅色：系统是深色时也要赢回来，所以这条要写在深色媒体查询之后。
+@media (prefers-color-scheme: dark) {
+  .theme-light {
+    @include light-tokens;
+    color-scheme: light;
+  }
+}
+
+/* ---------------------------------------------------------------- 复位 */
+
+page {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: $font-body;
+  font-size: $fs-base;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+view,
+text,
+scroll-view,
+image,
+input,
+textarea,
+button {
+  box-sizing: border-box;
+}
+
+image {
+  display: block;
+  max-width: 100%;
+}
+
+// 富文本是内核渲染好的 HTML，只能靠 rich-text 显示。基础排版用类选择器，三端都认。
+.rich-text {
+  font-size: $fs-md;
+  line-height: 1.78;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+// 下面这些是标签选择器。H5 和 App 端 rich-text 把 HTML 直接渲进 webview，能生效；
+// 小程序端是独立渲染层，外面的选择器进不去，改由 core/rich.ts 往标签上内联样式 ——
+// 所以整段在小程序端跳过，顺带避免编译期刷「不支持 p 标签选择器」的警告。
+// #ifndef MP-WEIXIN
+.rich-text {
+  p {
+    margin: 0 0 1em;
+  }
+  p:last-child {
+    margin-bottom: 0;
+  }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: $r-md;
+    margin: $sp-3 0;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 1.4em 0 0.6em;
+  }
+  h1 {
+    font-size: $fs-xl;
+  }
+  h2 {
+    font-size: $fs-lg;
+  }
+  h3,
+  h4 {
+    font-size: $fs-md;
+  }
+  ul,
+  ol {
+    padding-left: 1.4em;
+    margin: 0 0 1em;
+  }
+  li {
+    margin: 0.3em 0;
+  }
+  blockquote {
+    margin: 1em 0;
+    padding: $sp-2 $sp-4;
+    border-left: 3px solid var(--line-strong);
+    background: var(--surface-2);
+    color: var(--ink-2);
+    border-radius: 0 $r-sm $r-sm 0;
+  }
+  pre,
+  code {
+    font-family: $font-mono;
+    font-size: $fs-sm;
+  }
+  pre {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: $r-md;
+    padding: $sp-3;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 1em 0;
+  }
+  code {
+    background: var(--surface-3);
+    border-radius: 4px;
+    padding: 1px 4px;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: $fs-sm;
+  }
+  th,
+  td {
+    border: 1px solid var(--line);
+    padding: $sp-2 $sp-3;
+    text-align: left;
+  }
+  th {
+    background: var(--surface-2);
+    font-weight: 600;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 1.6em 0;
+  }
+}
+// #endif
+
+/* ------------------------------------------------------------ 通用零件 */
+
+.page-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.dim {
+  color: var(--ink-2);
+}
+
+.mono {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+}
+
+.f-sm {
+  font-size: $fs-sm;
+}
+.f-xs {
+  font-size: $fs-xs;
+}
+.bold {
+  font-weight: 600;
+}
+
+.ellipsis {
+  @include ellipsis;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: $r-lg;
+  box-shadow: var(--shadow-card);
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  transform: scaleY(0.5);
+  transform-origin: 0 50%;
+}
+
+// 底部安全区：全面屏要垫开 Home 指示条
+.safe-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+}
+
+/* -------------------------------------------------------------- 按钮 */
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  padding: 0 $sp-5;
+  border-radius: $r-md;
+  font-size: $fs-md;
+  font-weight: 600;
+  border: none;
+  line-height: 1;
+  @include pressable;
+
+  &::after {
+    border: none;
+  }
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+
+  &.is-disabled {
+    opacity: 0.45;
+  }
+}
+
+.btn-ghost {
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.btn-plain {
+  background: transparent;
+  color: var(--accent);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--line);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 $sp-2;
+  border-radius: $r-sm;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: $fs-xs;
+  line-height: 1;
+}
+
+.chip-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------ 骨架屏 */
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  border-radius: $r-sm;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+// 淡入：列表首屏渲染时避免生硬地跳出来
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.24s ease both;
+}

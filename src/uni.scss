@@ -1,0 +1,126 @@
+/**
+ * uni-app 会把本文件的内容原样注入到每个 <style lang="scss"> 里（不是以 @import 的方式，
+ * 是直接前置文本）。所以：
+ *   1. 这里只能放变量和 mixin，任何实际 CSS 都会被复制 N 份进包体；
+ *   2. 这里不能出现相对路径的 @import —— 注入之后相对路径是按「组件所在目录」解析的，
+ *      一定找不到文件。
+ * 真正的 CSS 输出在 styles/global.scss，由 App.vue 引入一次。
+ */
+// 字号
+$fs-xs: 11px;
+$fs-sm: 13px;
+$fs-base: 15px;
+$fs-md: 16px;
+$fs-lg: 18px;
+$fs-xl: 21px;
+$fs-2xl: 26px;
+$fs-3xl: 32px;
+
+// 间距
+$sp-1: 4px;
+$sp-2: 8px;
+$sp-3: 12px;
+$sp-4: 16px;
+$sp-5: 20px;
+$sp-6: 24px;
+$sp-8: 32px;
+
+// 圆角
+$r-sm: 6px;
+$r-md: 10px;
+$r-lg: 14px;
+$r-full: 999px;
+
+// 正文字体栈：中文优先落到系统黑体，各端都不外链字体文件（小程序也加载不了）。
+$font-body: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+  'Helvetica Neue', Helvetica, Arial, sans-serif;
+// 数字与 ID 用等宽，楼层号、浏览量对齐时才稳。
+$font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+/**
+ * 浅色令牌。和 dark-tokens 一样写一次、多处引用 —— 因为挂载点按端不同：
+ * 小程序认 page，H5 上 page 会被编译成 uni-page-body，另外还需要给 :root 一份，
+ * 否则 html/body 的背景拿不到 --bg。
+ */
+@mixin light-tokens {
+  --bg: #f1f3f5;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --surface-3: #eceff2;
+  --ink: #12181f;
+  --ink-2: #3c4650;
+  --muted: #6b7684;
+  --line: #e3e7ec;
+  --line-strong: #cfd6dd;
+  --accent: #0e7c86;
+  --accent-press: #0a646c;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2f1f2;
+  --danger: #c0392b;
+  --warn: #b45309;
+  --shadow-card: 0 1px 2px rgba(16, 24, 32, 0.06);
+  --shadow-float: 0 8px 28px rgba(16, 24, 32, 0.14);
+}
+
+/**
+ * 深色令牌。写一次，由 global.scss 分别用在 prefers-color-scheme 和 .theme-dark 两处，
+ * 避免手抄两遍抄漏一个。
+ */
+@mixin dark-tokens {
+  --bg: #0c1013;
+  --surface: #141a1e;
+  --surface-2: #1b2228;
+  --surface-3: #222b32;
+  --ink: #e8edf1;
+  --ink-2: #b8c2cb;
+  --muted: #8a96a1;
+  --line: #232c33;
+  --line-strong: #303b43;
+  --accent: #45c8d0;
+  --accent-press: #6fd9df;
+  --accent-ink: #05272a;
+  --accent-soft: #0f2e32;
+  --danger: #f0837a;
+  --warn: #e5a45c;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+// 单行截断
+@mixin ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// 多行截断
+@mixin clamp-lines($lines: 2) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+  overflow: hidden;
+}
+
+// 点击态：三端都没有 hover，用 :active 做反馈
+@mixin pressable {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  &:active {
+    opacity: 0.72;
+  }
+}
+
+// 细分割线，小程序里 1px 会显得粗，用 transform 压细
+@mixin hairline-bottom($color: var(--line)) {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: $color;
+    transform: scaleY(0.5);
+    transform-origin: 0 100%;
+  }
+}
