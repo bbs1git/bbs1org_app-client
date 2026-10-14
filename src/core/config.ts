@@ -28,15 +28,24 @@ let cached: string | null = null
 
 export const API_PREFIX = '/api/v1'
 
+/**
+ * 兜底地址：编译期注入的（有的话）优先，否则用内置默认。
+ * 设置页的「恢复默认」回到的就是它 —— 别在别处再写一遍这个选择逻辑，
+ * 两处不一致会让「恢复默认」恢复到一个谁也没想到的地址。
+ */
+export function defaultBaseUrl(): string {
+  return BUILD_BASE_URL || DEFAULT_BASE_URL
+}
+
 export function baseUrl(): string {
   if (cached !== null) return cached
   const stored = readStore<string>('baseUrl', '')
-  cached = normalize(stored) || BUILD_BASE_URL || DEFAULT_BASE_URL
+  cached = normalize(stored) || defaultBaseUrl()
   return cached
 }
 
 export function setBaseUrl(url: string): string {
-  const next = normalize(url) || BUILD_BASE_URL || DEFAULT_BASE_URL
+  const next = normalize(url) || defaultBaseUrl()
   cached = next
   writeStore('baseUrl', next)
   return next

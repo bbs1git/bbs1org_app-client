@@ -5,7 +5,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import NavBar from '@/components/NavBar.vue'
 import { fetchConfig } from '@/api/site'
 import { usePageChrome } from '@/composables/usePageChrome'
-import { APP_VERSION, baseUrl, setBaseUrl } from '@/core/config'
+import { APP_VERSION, baseUrl, defaultBaseUrl, setBaseUrl } from '@/core/config'
 import { routes } from '@/core/navigate'
 import { platformName } from '@/core/platform'
 import { confirm, toast, toastError, withLoading } from '@/core/ui'
@@ -30,7 +30,13 @@ const feed = useFeedStore()
 const notifications = useNotificationStore()
 const session = useSessionStore()
 
+/**
+ * 输入框里的草稿，以及**已经生效**的地址。两个分开存是因为 baseUrl() 是个普通函数
+ * （模块级缓存，不是响应式），拿它做 computed 的依赖不会跟着变 —— 应用完地址依赖不刷新，
+ * 「应用」按钮和「恢复默认」那一行就会停在旧状态上。
+ */
 const hostDraft = ref(baseUrl())
+const applied = ref(baseUrl())
 const checking = ref(false)
 
 const THEMES: { key: ThemeMode; label: string }[] = [
@@ -39,7 +45,11 @@ const THEMES: { key: ThemeMode; label: string }[] = [
   { key: 'dark', label: '深色' },
 ]
 
-const hostChanged = computed(() => hostDraft.value.trim().replace(/\/+$/, '') !== baseUrl())
+const hostChanged = computed(() => hostDraft.value.trim().replace(/\/+$/, '') !== applied.value)
+
+/** 兜底地址。当前不是它的时候才露出「恢复默认」——点了也是原地打转就没必要占一行。 */
+const defaultHost = computed(() => defaultBaseUrl())
+const canRestore = computed(() => applied.value !== defaultHost.value)
 
 /**
  * 上传上限只在登录后才由服务端给出 —— 未登录时 max_mb 是 0（故意的，不向游客透露）。
@@ -70,6 +80,21 @@ async function checkConnection(): Promise<void> {
   }
 }
 
+/**
+ * 换站点之后的善后。地址已经写进本地存储，剩下的都是清场：列表、配置、会话
+ * 全是按旧地址拉的，留着只会显示上一个站点的内容，所以一并丢掉并重启到首页。
+ */
+function switchTo(next: string): void {
+  setBaseUrl(next)
+  applied.value = baseUrl()
+  hostDraft.value = applied.value
+  site.reset()
+  feed.reset()
+  notifications.reset()
+  session.setUser(null)
+  setTimeout(() => uni.reLaunch({ url: routes.home }), 400)
+}
+
 async function applyHost(): Promise<void> {
   const next = hostDraft.value.trim()
   if (!/^https?:\/\//i.test(next)) {
@@ -78,14 +103,21 @@ async function applyHost(): Promise<void> {
   }
   if (!(await confirm('切换站点后需要重新登录，确定吗？', '切换站点'))) return
 
-  setBaseUrl(next)
-  hostDraft.value = baseUrl()
-  site.reset()
-  feed.reset()
-  notifications.reset()
-  session.setUser(null)
+  switchTo(next)
   toast('已切换站点')
-  setTimeout(() => uni.reLaunch({ url: routes.home }), 400)
+}
+
+/**
+ * 回到兜底地址。地址填错了这是唯一的出路 —— 输入框清空会被当成格式错误拒绝，
+ * 而存下来的地址又盖着编译期注入的那个，所以只能从这儿回去。
+ */
+async function restoreHost(): Promise<void> {
+  const target = defaultHost.value
+  if (target === applied.value) return
+  if (!(await confirm(`把站点地址改回 ${target}？切换站点后需要重新登录。`, '恢复默认'))) return
+
+  switchTo(target)
+  toast('已恢复默认地址')
 }
 
 async function clearCache(): Promise<void> {
@@ -144,6 +176,14 @@ async function clearCache(): Promise<void> {
           <view v-if="hostChanged" class="row-action" hover-class="row-action-hover" @click="applyHost">
             <text class="row-action-text">应用</text>
           </view>
+        </view>
+
+        <view v-if="canRestore" class="row" hover-class="row-hover" @click="restoreHost">
+          <AppIcon name="refresh" :size="19" color="ink2" :weight="1.75" />
+          <text class="row-label">恢复默认</text>
+          <view class="grow" />
+          <text class="row-value">{{ defaultHost }}</text>
+          <AppIcon name="chevron-right" :size="15" color="muted" :weight="1.8" />
         </view>
 
         <view class="row" hover-class="row-hover" @click="checkConnection">
