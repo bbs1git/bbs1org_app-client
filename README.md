@@ -1,8 +1,49 @@
 # bbs1 客户端
 
-一套 Vue 3 + uni-app 代码，编译出**网页 / 微信小程序 / 安卓 / iOS** 四个端。
-后端是站点的 `app_api` 插件（`app/plugins/app_api/`），纯 JSON 接口 + Bearer 令牌，
+编译源码地址：
+https://github.com/bbs1git/bbs1org_app-client
+
+一套 Vue 3 + uni-app 代码，编译出网页H5 / 微信小程序 / 安卓 / iOS 四个端。
+后端是站点的 app_api 插件。
+
+后端插件地址：
+https://bbs1.org/topic/2017
+（插件源码在主仓库 https://github.com/bbs1git/bbs1org 的 `app/plugins/app_api/`）
+
+## 客户端生成流程
+
+**第一步**：在自己的 bbs1 论坛上，安装插件 https://bbs1.org/topic/2017
+
+**第二步**：告诉 ai 以下提示语：
+
+```
+我的bbs1站点根地址是：https://xxx  客户端源码是：https://github.com/bbs1git/bbs1org_app-client
+请给我编译生成 网页H5 / 微信小程序 / 安卓 / iOS 四个客户端
+```
+
+> 提示语里填的是**站点根地址** `https://xxx`，不是 `https://xxx/api`。
+> 客户端自己会拼 `/api/v1`，填成 `.../api` 就是拼出 `/api/api/v1/...`，全站 404。
+> 不确定的话：`https://xxx/api/v1/config` 能打开、`https://xxx/api/api/v1/config` 报
+> 「接口版本不存在」，就说明该填 `https://xxx`。
+
+## 编译生成得到产物
+
+```
+app-client/dist/build/h5
+H5版本，直接浏览器访问，或者部署到线上访问
+
+app-client/dist/build/mp-weixin
+微信小程序，请用微信开发者工具导入
+
+app-client/dist/build/app
+安卓 + iOS，请用 HBuilderX 导入后云打包
+```
+
+## 技术架构
+
+Vue 3 + uni-app + 纯 JSON 接口 + Bearer 令牌，
 和网页端共用同一个数据库、同一套权限判定。
+四个客户端，修改一套源码，即可升级功能，无需各自维护。
 
 ```
 npm install
@@ -16,50 +57,6 @@ npm run type-check       # vue-tsc --noEmit
 
 装依赖时注意：`@dcloudio/*` 全部锁在 `3.0.0-5020420260813003`。
 npm 上的 `latest` 标签指向的是 **Vue 2** 那条线，混进来会和 `vue@3` 打架。
-
----
-
-## 在浏览器里跑
-
-客户端默认连 `https://bbs1.org`。那边**没有装 `app_api`**，所以直接 `npm run dev:h5`
-打开只会看到「没能连上服务器」。本地要看到真数据，得把地址指到本机的后端：
-
-```bash
-# 1. 起后端（在仓库根目录，别用 localhost 当 Host）
-php -S 127.0.0.1:8099 index.php
-
-# 2. 起前端，编译期把站点地址指过去
-cd app-client
-VITE_API_BASE_URL=http://127.0.0.1:8099 npm run dev:h5
-
-# 3. 浏览器打开
-open http://localhost:5173/
-```
-
-三个地址来源，优先级从高到低：**运行时设置**（「我的 → 站点设置」，存在本地存储里）
-> **`VITE_API_BASE_URL`**（只影响这次编译，正式包不会带上）> `src/core/config.ts` 的 `DEFAULT_BASE_URL`。
-
-> 如果之前用「站点设置」改过地址，那个值存在浏览器本地存储里，会**盖住** `VITE_API_BASE_URL`。
-> 表现是改了环境变量重启还是连旧地址 —— 去设置页点一次「恢复默认」即可
-> （当前地址已经等于兜底地址时那一行不显示；输入框清空会被当成格式错误拒绝，
-> 所以别指望靠清空回去）。
-
-> 「站点地址」填的是**站点根地址**，不是接口地址。客户端自己会拼 `/api/v1`，
-> 填成 `https://bbs1.org/api` 会拼出 `/api/api/v1/...`，全站 404。
-
-H5 跑在 `localhost:5173`、后端在 `127.0.0.1:8099`，这是**跨域**，浏览器会先发预检。
-后端插件配置里的 `cors_origins` 必须包含 `http://localhost:5173`，
-否则控制台只会报 CORS，接口一个都通不了：
-
-```
-# 后台插件管理 → app_api 配置
-cors_origins = http://localhost:5173,http://127.0.0.1:5173
-```
-
-`127.0.0.1:5173` 和 `localhost:5173` 是两个不同的来源，两个都填上就不用管打开的是哪个。
-App 和小程序不受同源策略约束，只有 H5 需要这一项。
-
----
 
 ## 跑起来之前，服务端要先满足几件事
 
@@ -75,10 +72,11 @@ App 和小程序不受同源策略约束，只有 H5 需要这一项。
 - **运行时**：我的 → 设置 → 站点地址（自建站、内网调试用这个，改完会清缓存并重启到首页）
 - **编译期**：`src/core/config.ts` 里的 `DEFAULT_BASE_URL`
 
-改错了回不去的话，设置页「站点 → 恢复默认」回到兜底地址（`core/config.ts` 的
-`defaultBaseUrl()`：这次编译若注入了 `VITE_API_BASE_URL` 就是它，否则是 `DEFAULT_BASE_URL`）。
+三个地址来源，优先级从高到低：**运行时设置** > **`VITE_API_BASE_URL`**（只影响这次编译，
+正式包不会带上）> `DEFAULT_BASE_URL`。两处填的都是站点根地址。
 
----
+填错了回不去的话，设置页「站点 → 恢复默认」回到兜底地址（`core/config.ts` 的
+`defaultBaseUrl()`：这次编译若注入了 `VITE_API_BASE_URL` 就是它，否则是 `DEFAULT_BASE_URL`）。
 
 ## 目录
 
@@ -112,6 +110,42 @@ src/
 ```
 
 ---
+
+下面这些面向改这份源码的人。
+
+## 在浏览器里跑
+
+客户端默认连官方站 `https://bbs1.org`，那边装了 `app_api`，所以 `npm run dev:h5`
+打开就是真数据。要在**自己的**站点上调试，就把地址指到自己的后端：
+
+```bash
+# 1. 起后端（在仓库根目录，别用 localhost 当 Host）
+php -S 127.0.0.1:8099 index.php
+
+# 2. 起前端，编译期把站点地址指过去
+cd app-client
+VITE_API_BASE_URL=http://127.0.0.1:8099 npm run dev:h5
+
+# 3. 浏览器打开
+open http://localhost:5173/
+```
+
+> 如果之前用「站点设置」改过地址，那个值存在浏览器本地存储里，会**盖住** `VITE_API_BASE_URL`。
+> 表现是改了环境变量重启还是连旧地址 —— 去设置页点一次「恢复默认」即可
+> （当前地址已经等于兜底地址时那一行不显示；输入框清空会被当成格式错误拒绝，
+> 所以别指望靠清空回去）。
+
+H5 跑在 `localhost:5173`、后端在 `127.0.0.1:8099`，这是**跨域**，浏览器会先发预检。
+后端插件配置里的 `cors_origins` 必须包含 `http://localhost:5173`，
+否则控制台只会报 CORS，接口一个都通不了：
+
+```
+# 后台插件管理 → app_api 配置
+cors_origins = http://localhost:5173,http://127.0.0.1:5173
+```
+
+`127.0.0.1:5173` 和 `localhost:5173` 是两个不同的来源，两个都填上就不用管打开的是哪个。
+App 和小程序不受同源策略约束，只有 H5 需要这一项。
 
 ## 几个值得说明的选择
 
@@ -166,8 +200,6 @@ H5 同源时能用，但小程序和 App 的 webview 不在站点域名下会 40
 搜索范围的最小字数从站点配置的 `limits.search_min_chars` 取，不够长时按钮是暗的、
 点了也只会提示，不再是敲一个字提交然后吃一个红色报错。
 
----
-
 ## 提审和小程序上架前要过的坎
 
 - **接口域名**：微信要求 HTTPS + 已备案，并在公众平台配成 request 合法域名。`urlCheck: false` 只是开发者工具的开关，真机不认。
@@ -176,8 +208,8 @@ H5 同源时能用，但小程序和 App 的 webview 不在站点域名下会 40
 - **隐私协议**：`manifest.json` 里已经填了相册和相机的用途说明（iOS）与相关权限（Android），上架时按平台要求再对一遍。
 - **版本号**：`manifest.json` 的 `versionName` 和 `core/config.ts` 的 `APP_VERSION` 要一致。
   站点配了 `min_app_version` 时，低于它的客户端会被接口拒绝（错误码提示客户端升级）。
-
----
+- **打包要账号**：App 云打包需要 DCloud appid（`manifest.json` 里现在是空的，HBuilderX 打开项目会让你获取）；
+  小程序上传需要微信公众平台的 appid（现在是 `touristappid`，只能本地预览）。
 
 ## 本地调试的两个坑
 
